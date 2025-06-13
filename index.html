@@ -86,6 +86,13 @@
       font-size: 16px;
       color: #9e9e9e;
       box-sizing: border-box;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .day:hover {
+      transform: scale(1.05);
+      z-index: 20;
     }
 
     .day-number {
@@ -165,7 +172,7 @@
       font-weight: bold;
       margin: 30px 0;
       padding: 15px 30px;
-      border-radius: 10px;
+      border-radius: 10极;
       background-color: #424242;
       max-width: 380px;
       width: 100%;
@@ -174,13 +181,133 @@
     }
 
     .free-time {
-      color: #b9f6ca; /* Зеленый для свободного времени */
+      color: #b9f6ca;
       text-shadow: 0 0 12px rgba(185, 246, 202, 0.7);
     }
 
     .busy-time {
-      color: #ff8a80; /* Красный для рабочего времени */
+      color: #ff8a80;
       text-shadow: 0 0 12px rgba(255, 138, 128, 0.7);
+    }
+
+    /* Стили для popup */
+    .popup-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
+    }
+
+    .popup-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .popup-content {
+      background-color: #424242;
+      border-radius: 12px;
+      padding: 25px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      transform: translateY(20px);
+      transition: transform 0.3s;
+      border: 2px solid #546e7a;
+    }
+
+    .popup-overlay.active .popup-content {
+      transform: translateY(0);
+    }
+
+    .popup-header {
+      color: #81d4fa;
+      font-size: 24px;
+      margin-bottom: 20px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    /* ПЕРЕРАБОТАННЫЙ СТИЛЬ ДЛЯ БЛОКА НАЗВАНИЯ СМЕНЫ */
+    .popup-day-type {
+      font-size: 20px;
+      margin-bottom: 15px;
+      text-align: center;
+      padding: 12px 15px;
+      border-radius: 8px;
+      cursor: default;
+      user-select: none;
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .popup-day-type.day {
+      background-color: #78909c;
+      color: #263238;
+    }
+
+    .popup-day-type.night {
+      background-color: #263238;
+      color: #b0bec5;
+    }
+
+    .popup-day-type.weekend {
+      background-color: #546e7a;
+      color: #b0bec5;
+    }
+
+    .popup-schedule {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .time-interval {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 15px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: default;
+    }
+
+    .time-interval.busy {
+      background-color: #ff8a8055;
+      color: #ff8a80;
+      border-left: 4px solid #ff8a80;
+    }
+
+    .time-interval.free {
+      background-color: #b9f6ca55;
+      color: #b9f6ca;
+      border-left: 4px solid #b9f6ca;
+    }
+
+    .popup-close {
+      display: block;
+      margin: 20px auto 0;
+      padding: 10px 25px;
+      background-color: #546e7a;
+      color: #e0f7fa;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.2s;
+    }
+
+    .popup-close:hover {
+      background-color: #607d8b;
     }
 
     @media (max-width: 1200px) {
@@ -228,6 +355,16 @@
         font-size: 18px;
         padding: 18px;
       }
+      .popup-content {
+        padding: 15px;
+      }
+      .popup-header {
+        font-size: 20px;
+      }
+      .popup-day-type {
+        font-size: 18px;
+        padding: 10px 12px;
+      }
     }
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap" rel="stylesheet">
@@ -245,28 +382,35 @@
 
   <div id="currentTimeDisplay" class="current-time-display"></div>
 
+  <!-- Popup для отображения информации о дне -->
+  <div id="dayPopup" class="popup-overlay">
+    <div class="popup-content">
+      <div id="popupHeader" class="popup-header"></div>
+      <div id="popupDayType" class="popup-day-type"></div>
+      <div id="popupSchedule" class="popup-schedule"></div>
+      <button id="popupClose" class="popup-close">Закрыть</button>
+    </div>
+  </div>
+
   <script>
     let currentStartDate = new Date();
-    // Динамическая начальная дата (первый день дневной смены)
     let startCycleDate = new Date();
-    startCycleDate.setDate(1); // Начало с первого дня текущего месяца
+    startCycleDate.setDate(1);
     startCycleDate.setHours(0, 0, 0, 0);
 
     const shiftPattern = [
-      { type: 'day' },
-      { type: 'night' },
-      { type: 'weekend' },
-      { type: 'weekend' }
+      { type: 'day', name: 'Дневная смена' },
+      { type: 'night', name: 'Ночная смена' },
+      { type: 'weekend', name: 'Выходной 1' },
+      { type: 'weekend', name: 'Выходной 2' }
     ];
 
-    // Найти ближайшую дневную смену
     function findNearestDayShift() {
       const today = new Date();
       let testDate = new Date(today);
       testDate.setDate(1);
       testDate.setHours(0, 0, 0, 0);
       
-      // Ищем в пределах 10 дней вперед
       for (let i = 0; i < 10; i++) {
         const diffDays = Math.floor((testDate - startCycleDate) / (1000 * 60 * 60 * 24));
         const shiftIndex = diffDays % shiftPattern.length;
@@ -276,14 +420,12 @@
         }
         testDate.setDate(testDate.getDate() + 1);
       }
-      return new Date(today); // Возвращаем сегодняшнюю дату, если не нашли
+      return new Date(today);
     }
 
-    // Обновить начальную дату цикла
     startCycleDate = findNearestDayShift();
 
     function getDayType(date) {
-      // Приводим даты к началу суток
       const start = new Date(startCycleDate);
       start.setHours(0, 0, 0, 0);
       
@@ -294,25 +436,35 @@
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       const shiftIndex = diffDays % shiftPattern.length;
       
-      return shiftPattern[shiftIndex].type;
+      return shiftPattern[shiftIndex];
     }
 
-    function getDaySchedule(dayType) {
-      switch(dayType) {
+    function getDaySchedule(shift) {
+      switch(shift.type) {
         case 'day':
           return [
-            { start: '07:00', end: '19:00', status: 'busy' },
-            { start: '19:30', end: '23:59', status: 'free' }
+            { start: '07:00', end: '19:00', status: 'busy', label: 'Рабочее время' },
+            { start: '19:30', end: '24:00', status: 'free', label: 'Свободное время' }
           ];
         case 'night':
           return [
-            { start: '00:00', end: '07:00', status: 'busy' },
-            { start: '07:00', end: '17:00', status: 'free' }
+            { start: '00:00', end: '07:00', status: 'busy', label: 'Рабочее время' },
+            { start: '07:00', end: '17:00', status: 'free', label: 'Свободное время' }
           ];
         case 'weekend':
-          return [
-            { start: '00:00', end: '23:59', status: 'free' }
-          ];
+          if (shift.name === 'Выходной 1') {
+            return [
+              { start: '17:00', end: '24:00', status: 'free', label: 'Свободное время' }
+            ];
+          } else if (shift.name === 'Выходной 2') {
+            return [
+              { start: '12:00', end: '24:00', status: 'free', label: 'Свободное время' }
+            ];
+          } else {
+            return [
+              { start: '00:00', end: '24:00', status: 'free', label: 'Выходной день' }
+            ];
+          }
         default:
           return [];
       }
@@ -357,12 +509,11 @@
             dayNumberDiv.textContent = dayNumber;
             dayElement.appendChild(dayNumberDiv);
 
-            const shift = shiftPattern[currentShiftIndex];
+            const shift = shiftPattern[currentShiftIndex % shiftPattern.length];
             const dayType = shift.type;
 
             if (dayType === 'day' || dayType === 'night') {
-              dayElement.classList.add('shift');
-              dayElement.classList.add(dayType);
+              dayElement.classList.add('shift', dayType);
             } else {
               dayElement.classList.add('weekend');
             }
@@ -371,7 +522,11 @@
               dayElement.classList.add('today');
             }
 
-            currentShiftIndex = (currentShiftIndex + 1) % shiftPattern.length;
+            dayElement.addEventListener('click', () => {
+              showDayInfo(date, shift);
+            });
+
+            currentShiftIndex++;
           } else {
             dayElement.textContent = "";
           }
@@ -390,7 +545,6 @@
       let currentYear = startDate.getFullYear();
       let currentMonth = startDate.getMonth();
 
-      // Определяем начальный индекс смены для первого дня месяца
       const firstDay = new Date(currentYear, currentMonth, 1);
       const diffDays = Math.floor((firstDay - startCycleDate) / (1000 * 60 * 60 * 24));
       let shiftIndex = diffDays % shiftPattern.length;
@@ -410,6 +564,51 @@
 
       currentStartDate = startDate;
     }
+
+    function showDayInfo(date, shift) {
+      const popup = document.getElementById('dayPopup');
+      const popupHeader = document.getElementById('popupHeader');
+      const popupDayType = document.getElementById('popupDayType');
+      const popupSchedule = document.getElementById('popupSchedule');
+      
+      const dayName = date.toLocaleDateString('ru-RU', { weekday: 'long' });
+      const dateString = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+      
+      popupHeader.textContent = `${dayName}, ${dateString}`;
+      
+      popupDayType.textContent = shift.name;
+      popupDayType.className = 'popup-day-type ' + shift.type;
+      
+      const schedule = getDaySchedule(shift);
+      popupSchedule.innerHTML = '';
+      
+      schedule.forEach(interval => {
+        const intervalElement = document.createElement('div');
+        intervalElement.className = `time-interval ${interval.status}`;
+        
+        const timeRange = document.createElement('span');
+        timeRange.textContent = `${interval.start} - ${interval.end}`;
+        
+        const statusLabel = document.createElement('span');
+        statusLabel.textContent = interval.label;
+        
+        intervalElement.appendChild(timeRange);
+        intervalElement.appendChild(statusLabel);
+        popupSchedule.appendChild(intervalElement);
+      });
+      
+      popup.classList.add('active');
+    }
+
+    document.getElementById('popupClose').addEventListener('click', () => {
+      document.getElementById('dayPopup').classList.remove('active');
+    });
+
+    document.getElementById('dayPopup').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('dayPopup')) {
+        document.getElementById('dayPopup').classList.remove('active');
+      }
+    });
 
     const moveForwardButton = document.getElementById("moveForwardButton");
     const moveBackButton = document.getElementById("moveBackButton");
@@ -432,8 +631,12 @@
       const startParts = start.split(':');
       const endParts = end.split(':');
       
-      const startTime = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
-      const endTime = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+      let startTime = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+      let endTime = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+      
+      if (end === '24:00') {
+        endTime = 24 * 60;
+      }
       
       if (endTime < startTime) {
         return currentTime >= startTime || currentTime < endTime;
@@ -450,8 +653,8 @@
       hours = hours ? hours : 12;
       const timeString = `${hours}:${String(minutes).padStart(2, '0')} ${ampm}`;
 
-      const dayType = getDayType(now);
-      const schedule = getDaySchedule(dayType);
+      const dayInfo = getDayType(now);
+      const schedule = getDaySchedule(dayInfo);
       
       let isFree = false;
       for (const interval of schedule) {
@@ -464,16 +667,10 @@
       currentTimeDisplay.textContent = `Текущее время: ${timeString}`;
       currentTimeDisplay.className = 'current-time-display';
       currentTimeDisplay.classList.add(isFree ? 'free-time' : 'busy-time');
-      
-      // Отладочная информация
-      console.log(`Тип дня: ${dayType}`);
-      console.log(`Расписание: ${JSON.stringify(schedule)}`);
-      console.log(`Свободен: ${isFree}`);
     }
 
     setInterval(updateCurrentTime, 1000);
 
-    // Инициализация после установки начальной даты
     updateSchedules(new Date());
     updateCurrentTime();
   </script>
