@@ -591,30 +591,26 @@
       popupDayType.textContent = shift.name;
       popupDayType.className = 'popup-day-type ' + shift.type;
 
-    
-       // Устанавливаем высоту popup-schedule в 0 если это "Выходной 2" чтобы скрыть элементы,
-       popupSchedule.style.height = shift.name === 'Выходной 2' ? '0' : '';
-  
-      const schedule = getDaySchedule(date, shift);
       popupSchedule.innerHTML = '';
       
+      const schedule = getDaySchedule(date, shift);
       schedule.forEach(interval => {
-          const intervalElement = document.createElement('div');
-          intervalElement.className = `time-interval ${interval.status}`;
-          
-          const timeRange = document.createElement('span');
-          let formattedStart = formatTime(interval.start,true);
-          let formattedEnd = formatTime(interval.end,true);
-          
-          timeRange.textContent = `${formattedStart} - ${formattedEnd}`;
-          
-          const statusLabel = document.createElement('span');
-          statusLabel.textContent = interval.label;
-          
-          intervalElement.appendChild(timeRange);
-          intervalElement.appendChild(statusLabel);
-          popupSchedule.appendChild(intervalElement);
-        });
+        const intervalElement = document.createElement('div');
+        intervalElement.className = `time-interval ${interval.status}`;
+        
+        const timeRange = document.createElement('span');
+        let formattedStart = formatTime(interval.start,true);
+        let formattedEnd = formatTime(interval.end,true);
+        
+        timeRange.textContent = `${formattedStart} - ${formattedEnd}`;
+        
+        const statusLabel = document.createElement('span');
+        statusLabel.textContent = interval.label;
+        
+        intervalElement.appendChild(timeRange);
+        intervalElement.appendChild(statusLabel);
+        popupSchedule.appendChild(intervalElement);
+      });
       
       popup.classList.add('active');
     }
@@ -668,16 +664,29 @@
         }
       }
 
+      const currentTimeDisplay = document.getElementById('currentTimeDisplay');
       currentTimeDisplay.textContent = `Текущее время: ${timeString}`;
       currentTimeDisplay.className = 'current-time-display';
       currentTimeDisplay.classList.add(isFree ? 'free-time' : 'busy-time');
     }
 
-    setInterval(updateCurrentTime, 1000);
+    // Добавленные обработчики для кнопок навигации
+    document.getElementById('moveBackButton').addEventListener('click', () => {
+      const newStartDate = new Date(currentStartDate);
+      newStartDate.setMonth(newStartDate.getMonth() - 3);
+      updateSchedules(newStartDate);
+    });
+
+    document.getElementById('moveForwardButton').addEventListener('click', () => {
+      const newStartDate = new Date(currentStartDate);
+      newStartDate.setMonth(newStartDate.getMonth() + 3);
+      updateSchedules(newStartDate);
+    });
 
     // Инициализация
     updateSchedules(new Date());
     updateCurrentTime();
+    setInterval(updateCurrentTime, 1000);
   </script>
 </body>
 </html>
