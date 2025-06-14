@@ -48,7 +48,8 @@
       max-width: 380px;
       width: 100%;
       border: 2px solid #424242;
-      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+      margin: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
       border-radius: 12px;
       background-color: #424242;
       display: flex;
@@ -63,8 +64,8 @@
       font-weight: bold;
       font-size: 22px;
       border-bottom: 2px solid #424242;
-      border-top-left-radius: 10px;
-      border-top-right-radius: 10px;
+      border-top-left-radius: 8px;
+      border-top-right-radius: 8px;
       text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
     }
 
@@ -172,7 +173,7 @@
       font-weight: bold;
       margin: 30px 0;
       padding: 15px 30px;
-      border-radius: 10极;
+      border-radius: 10px;
       background-color: #424242;
       max-width: 380px;
       width: 100%;
@@ -190,7 +191,6 @@
       text-shadow: 0 0 12px rgba(255, 138, 128, 0.7);
     }
 
-    /* Стили для popup */
     .popup-overlay {
       position: fixed;
       top: 0;
@@ -236,18 +236,22 @@
       font-weight: bold;
     }
 
-    /* ПЕРЕРАБОТАННЫЙ СТИЛЬ ДЛЯ БЛОКА НАЗВАНИЯ СМЕНЫ */
     .popup-day-type {
       font-size: 20px;
-      margin-bottom: 15px;
+      margin: 0 auto 15px;
       text-align: center;
       padding: 12px 15px;
       border-radius: 8px;
-      cursor: default;
-      user-select: none;
       display: block;
       width: 100%;
+      height: 48px;
       box-sizing: border-box;
+      cursor: default;
+      user-select: none;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .popup-day-type.day {
@@ -382,7 +386,6 @@
 
   <div id="currentTimeDisplay" class="current-time-display"></div>
 
-  <!-- Popup для отображения информации о дне -->
   <div id="dayPopup" class="popup-overlay">
     <div class="popup-content">
       <div id="popupHeader" class="popup-header"></div>
@@ -439,35 +442,44 @@
       return shiftPattern[shiftIndex];
     }
 
-    function getDaySchedule(shift) {
+    function formatTime(time, roundToNearestHour = false) {
+      let [hours, minutes] = time.split(':').map(Number);
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      let formattedMinutes = String(minutes).padStart(2, '0');
+
+      if (roundToNearestHour) {
+        formattedMinutes = '00';
+      }
+      return `${hours}:${formattedMinutes} ${ampm}`;
+    }
+
+    function getDaySchedule(date, shift) {
+      const schedule = [];
+      const now = new Date(date);
+      now.setHours(0,0,0,0);
+
       switch(shift.type) {
         case 'day':
-          return [
-            { start: '07:00', end: '19:00', status: 'busy', label: 'Рабочее время' },
-            { start: '19:30', end: '24:00', status: 'free', label: 'Свободное время' }
-          ];
+          schedule.push({ start: '7:00', end: '19:00', status: 'busy', label: 'Рабочее время' });
+          schedule.push({ start: '19:00', end: '00:00', status: 'free', label: 'Свободное время' });
+          break;
         case 'night':
-          return [
-            { start: '00:00', end: '07:00', status: 'busy', label: 'Рабочее время' },
-            { start: '07:00', end: '17:00', status: 'free', label: 'Свободное время' }
-          ];
+          schedule.push({ start: '19:00', end: '07:00', status: 'busy', label: 'Рабочее время' });
+          schedule.push({ start: '07:00', end: '17:00', status: 'free', label: 'Свободное время' });
+          break;
         case 'weekend':
           if (shift.name === 'Выходной 1') {
-            return [
-              { start: '17:00', end: '24:00', status: 'free', label: 'Свободное время' }
-            ];
-          } else if (shift.name === 'Выходной 2') {
-            return [
-              { start: '12:00', end: '24:00', status: 'free', label: 'Свободное время' }
-            ];
-          } else {
-            return [
-              { start: '00:00', end: '24:00', status: 'free', label: 'Выходной день' }
-            ];
+            schedule.push({ start: '00:00', end: '19:00', status: 'busy', label: 'Рабочее время' });
+            schedule.push({ start: '19:00', end: '00:00', status: 'free', label: 'Свободное время' });
           }
+          break;
         default:
-          return [];
+          break;
       }
+
+      return schedule;
     }
 
     function createSchedule(year, month, shiftPattern, shiftIndex) {
@@ -578,24 +590,31 @@
       
       popupDayType.textContent = shift.name;
       popupDayType.className = 'popup-day-type ' + shift.type;
-      
-      const schedule = getDaySchedule(shift);
+
+    
+       // Устанавливаем высоту popup-schedule в 0 если это "Выходной 2" чтобы скрыть элементы,
+       popupSchedule.style.height = shift.name === 'Выходной 2' ? '0' : '';
+  
+      const schedule = getDaySchedule(date, shift);
       popupSchedule.innerHTML = '';
       
       schedule.forEach(interval => {
-        const intervalElement = document.createElement('div');
-        intervalElement.className = `time-interval ${interval.status}`;
-        
-        const timeRange = document.createElement('span');
-        timeRange.textContent = `${interval.start} - ${interval.end}`;
-        
-        const statusLabel = document.createElement('span');
-        statusLabel.textContent = interval.label;
-        
-        intervalElement.appendChild(timeRange);
-        intervalElement.appendChild(statusLabel);
-        popupSchedule.appendChild(intervalElement);
-      });
+          const intervalElement = document.createElement('div');
+          intervalElement.className = `time-interval ${interval.status}`;
+          
+          const timeRange = document.createElement('span');
+          let formattedStart = formatTime(interval.start,true);
+          let formattedEnd = formatTime(interval.end,true);
+          
+          timeRange.textContent = `${formattedStart} - ${formattedEnd}`;
+          
+          const statusLabel = document.createElement('span');
+          statusLabel.textContent = interval.label;
+          
+          intervalElement.appendChild(timeRange);
+          intervalElement.appendChild(statusLabel);
+          popupSchedule.appendChild(intervalElement);
+        });
       
       popup.classList.add('active');
     }
@@ -610,38 +629,9 @@
       }
     });
 
-    const moveForwardButton = document.getElementById("moveForwardButton");
-    const moveBackButton = document.getElementById("moveBackButton");
-    const currentTimeDisplay = document.getElementById("currentTimeDisplay");
-
-    moveForwardButton.addEventListener("click", function() {
-      let nextMonth = new Date(currentStartDate);
-      nextMonth.setMonth(nextMonth.getMonth() + 3);
-      updateSchedules(nextMonth);
-    });
-
-    moveBackButton.addEventListener("click", function() {
-      let nextMonth = new Date(currentStartDate);
-      nextMonth.setMonth(nextMonth.getMonth() - 3);
-      updateSchedules(nextMonth);
-    });
-
-    function isTimeInRange(current, start, end) {
-      const currentTime = current.getHours() * 60 + current.getMinutes();
-      const startParts = start.split(':');
-      const endParts = end.split(':');
-      
-      let startTime = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
-      let endTime = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
-      
-      if (end === '24:00') {
-        endTime = 24 * 60;
-      }
-      
-      if (endTime < startTime) {
-        return currentTime >= startTime || currentTime < endTime;
-      }
-      return currentTime >= startTime && currentTime < endTime;
+    function parseTime(timeStr) {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return [hours, minutes];
     }
 
     function updateCurrentTime() {
@@ -654,13 +644,27 @@
       const timeString = `${hours}:${String(minutes).padStart(2, '0')} ${ampm}`;
 
       const dayInfo = getDayType(now);
-      const schedule = getDaySchedule(dayInfo);
-      
-      let isFree = false;
+      const schedule = getDaySchedule(now, dayInfo);
+
+      let isFree = true;
       for (const interval of schedule) {
-        if (isTimeInRange(now, interval.start, interval.end)) {
-          isFree = (interval.status === 'free');
-          break;
+        const [startHour, startMinute] = parseTime(interval.start);
+        const endHour = interval.end === '24:00' ? 24 : parseTime(interval.end)[0];
+        const endMinute = interval.end === '24:00' ? 0 : parseTime(interval.end)[1];
+        
+        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+        let startMinutes = startHour * 60 + startMinute;
+        let endMinutes = endHour * 60 + endMinute;
+
+        if (endMinutes < startMinutes) {
+          endMinutes += 24 * 60;
+        }
+
+        if (nowMinutes >= startMinutes && nowMinutes < endMinutes) {
+          if (interval.status === 'busy') {
+            isFree = false;
+            break;
+          }
         }
       }
 
@@ -671,6 +675,7 @@
 
     setInterval(updateCurrentTime, 1000);
 
+    // Инициализация
     updateSchedules(new Date());
     updateCurrentTime();
   </script>
